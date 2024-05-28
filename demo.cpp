@@ -1,3 +1,9 @@
+/**
+ * @file demo.cpp
+ * @author wysaid (this@xege.org)
+ * @brief 展示如何使用 EGE 实现一个简单的截图程序.
+ */
+
 #include <graphics.h>
 
 int main()
