@@ -193,7 +193,7 @@ int main()
 
             /// 绘制一个提示词
             setcolor(YELLOW);
-            outtextxy(left, top + h, "按ESC键退出, 右键取消, 按下鼠标中键(滚轮)保存到剪切板.");
+            outtextxy(left, top + h, "按ESC键退出, 右键取消, 按下鼠标中键(滚轮)弹窗保存.");
         }
     }
 
