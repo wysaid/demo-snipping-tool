@@ -6,6 +6,10 @@
 
 #include <graphics.h>
 
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 int main()
 {
     SetProcessDPIAware(); /// 忽略系统 DPI 设定, 方便截图.
@@ -62,45 +66,85 @@ int main()
     {
         while (mousemsg())
         {
-            MOUSEMSG msg = GetMouseMsg();
-            if (msg.mkRButton)
-            { /// 按下鼠标右键, 如果有选区, 则去掉选区, 否则直接退出程序.
-                if (hasSelection)
-                {
-                    hasSelection = false;
-                    shouldUpdate = true;
-                    startX = endX = startY = endY = 0;
-                    continue;
-                }
-                return 0;
-            }
+            mouse_msg msg = getmouse();
 
             shouldUpdate = true;
-            switch (msg.uMsg)
+            switch (msg.msg)
             {
-            case WM_LBUTTONDOWN:
-                leftDown = true;
-                lastMouseX = msg.x;
-                lastMouseY = msg.y;
-
-                // 如果新的鼠标点击位置在之前的选区内, 则认为是移动选区.
-                if (hasSelection && msg.x >= startX && msg.x <= endX && msg.y >= startY && msg.y <= endY)
+            case mouse_msg_down:
+                if (msg.is_left())
                 {
-                    break;
+                    leftDown = true;
+                    lastMouseX = msg.x;
+                    lastMouseY = msg.y;
+
+                    // 如果新的鼠标点击位置在之前的选区内, 则认为是移动选区.
+                    if (hasSelection && msg.x >= startX && msg.x <= endX && msg.y >= startY && msg.y <= endY)
+                    {
+                        break;
+                    }
+
+                    startX = msg.x;
+                    startY = msg.y;
+                    endX = msg.x;
+                    endY = msg.y;
+                    hasSelection = false;
+                }
+                else if (msg.is_right())
+                {
+                    /// 按下鼠标右键, 如果有选区, 则去掉选区, 否则直接退出程序.
+                    if (hasSelection)
+                    {
+                        hasSelection = false;
+                        startX = endX = startY = endY = 0;
+                        continue;
+                    }
+                    return 0;
+                }
+                else if (msg.is_mid())
+                { /// 按下鼠标中键, 执行截图保存操作
+                    if (hasSelection)
+                    { /// 弹窗保存截图.
+                        int w = abs(endX - startX);
+                        int h = abs(endY - startY);
+                        int left = MIN(startX, endX);
+                        int top = MIN(startY, endY);
+                        PIMAGE selection = newimage(w, h);
+                        getimage(selection, img, left, top, w, h);
+
+                        char filename[MAX_PATH] = { 0 };
+                        OPENFILENAME ofn = { 0 };
+                        ofn.lStructSize = sizeof(ofn);
+                        ofn.hwndOwner = windowHwnd;
+                        ofn.lpstrFile = filename;
+                        ofn.nMaxFile = sizeof(filename);
+                        ofn.lpstrFilter = "PNG\0*.png\0";
+                        ofn.lpstrTitle = "保存截图";
+                        ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
+                        if (GetSaveFileName(&ofn))
+                        {
+                            // 如果filename后缀不是 .png, 则自动加上.
+                            char* ext = strrchr(filename, '.');
+                            if (!ext || strcmp(ext, ".png") != 0)
+                            {
+                                strncat(filename, ".png", sizeof(filename) - strlen(filename) - 1);
+                            }
+                            savepng(selection, filename);
+                        }
+                        return 0;
+                    }
+                }
+                break;
+            case mouse_msg_up:
+                if (msg.is_left())
+                {
+                    leftDown = false;
+                    if (endX != startX && endY != startY)
+                        hasSelection = true;
                 }
 
-                startX = msg.x;
-                startY = msg.y;
-                endX = msg.x;
-                endY = msg.y;
-                hasSelection = false;
                 break;
-            case WM_LBUTTONUP:
-                leftDown = false;
-                if (endX != startX && endY != startY)
-                    hasSelection = true;
-                break;
-            case WM_MOUSEMOVE:
+            case mouse_msg_move:
                 if (leftDown)
                 {
                     if (hasSelection)
@@ -121,38 +165,6 @@ int main()
                     lastMouseY = msg.y;
                 }
                 break;
-            case WM_MBUTTONDOWN:
-                /// 双击鼠标左键, 执行截图保存操作.
-                if (hasSelection)
-                { /// 弹窗保存截图.
-                    int w = abs(endX - startX);
-                    int h = abs(endY - startY);
-                    int left = min(startX, endX);
-                    int top = min(startY, endY);
-                    PIMAGE selection = newimage(w, h);
-                    getimage(selection, img, left, top, w, h);
-
-                    char filename[MAX_PATH] = { 0 };
-                    OPENFILENAME ofn = { 0 };
-                    ofn.lStructSize = sizeof(ofn);
-                    ofn.hwndOwner = windowHwnd;
-                    ofn.lpstrFile = filename;
-                    ofn.nMaxFile = sizeof(filename);
-                    ofn.lpstrFilter = "PNG\0*.png\0";
-                    ofn.lpstrTitle = "保存截图";
-                    ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
-                    if (GetSaveFileName(&ofn))
-                    {
-                        // 如果filename后缀不是 .png, 则自动加上.
-                        char* ext = strrchr(filename, '.');
-                        if (!ext || strcmp(ext, ".png") != 0)
-                        {
-                            strncat(filename, ".png", sizeof(filename) - strlen(filename) - 1);
-                        }
-                        savepng(selection, filename);
-                    }
-                    return 0;
-                }
             }
         }
 
@@ -181,8 +193,8 @@ int main()
 
             int w = abs(endX - startX);
             int h = abs(endY - startY);
-            int left = min(startX, endX);
-            int top = min(startY, endY);
+            int left = MIN(startX, endX);
+            int top = MIN(startY, endY);
             putimage(left, top, w, h, img, left, top, w, h);
             /// 绘制一个白色的矩形框, 显示选区.
             setcolor(WHITE);
