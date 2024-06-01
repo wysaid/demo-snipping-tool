@@ -55,7 +55,7 @@ int main()
 
     /// 这是一个截屏用的程序, 不应该频繁刷新.
     /// 这里设置一个更新标记, 防止过度刷新空耗cpu.
-    bool shouldUpdate = false;
+    bool shouldUpdate = true;
 
     /// 设置一下提示字体
     setbkmode(TRANSPARENT);
@@ -180,7 +180,6 @@ int main()
         {
             shouldUpdate = false;
             cleardevice();
-            setviewport(0, 0, screenWidth, screenHeight);
             putimage_alphablend(NULL, img, 0, 0, 0x50, 0, 0, screenWidth, screenHeight);
 
             /// 绘制一个红色的矩形框, 显示整个屏幕.
